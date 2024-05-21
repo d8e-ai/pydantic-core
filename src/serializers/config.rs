@@ -193,12 +193,20 @@ impl BytesMode {
     pub fn deserialize_string<'a, 'py>(&self, s: &'a str) -> PyResult<EitherBytes<'a, 'py>> {
         match self {
             Self::Utf8 => Ok(EitherBytes::Cow(Cow::Borrowed(s.as_bytes()))),
-            Self::Base64 => match base64::engine::general_purpose::URL_SAFE.decode(s) {
+            Self::Base64 => match base64::engine::general_purpose::URL_SAFE.decode(to_base64_urlsafe(s)) {
                 Ok(bytes) => Ok(EitherBytes::from(bytes)),
-                Err(err) => Err(PyValueError::new_err(format!("Base64 decode error: {}", err)),),
+                Err(err) => Err(PyValueError::new_err(format!("Base64 decode error: {}", err))),
             },
             Self::Hex => Err(PyValueError::new_err("Hex deserialization is not supported")),
         }
+    }
+}
+
+fn to_base64_urlsafe<'a>(s: &'a str) -> String {
+    if s.contains('+') || s.contains('/') {
+        s.replace('+', "-").replace('/', "_")
+    } else {
+        s.to_string()
     }
 }
 
